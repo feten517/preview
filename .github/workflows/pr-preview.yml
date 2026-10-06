@@ -1,0 +1,23 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  deploy-preview:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t snip .
+
+      - name: Load image into kind cluster
+        run: kind load docker-image snip --name prview
+
+      - name: Create preview environment
+        run: |
+          chmod +x scripts/create-preview.sh
+          ./scripts/create-preview.sh ${{ github.event.pull_request.number }}
