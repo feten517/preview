@@ -18,7 +18,7 @@ jobs:
         run: kind load docker-image snip --name prview
 
       - name: Create preview environment
-        shell: bash
+        shell: "C:\\Program Files\\Git\\bin\\bash.exe --noprofile --norc -e -o pipefail '{0}'"
         run: |
           chmod +x scripts/create-preview.sh
           ./scripts/create-preview.sh ${{ github.event.pull_request.number }}
