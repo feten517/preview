@@ -16,6 +16,8 @@ jobs:
 
       - name: Load image into kind cluster
         run: kind load docker-image snip --name prview
+      - name: Debug kubectl context
+        run: bash -c "kubectl config current-context && kubectl get nodes"
 
       - name: Create preview environment
         run: bash -c "sed -i 's/\r$//' scripts/create-preview.sh && chmod +x scripts/create-preview.sh && bash scripts/create-preview.sh ${{ github.event.pull_request.number }}"
