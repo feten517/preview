@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snip</title>
+</head>
+<body>
+    <h1>Snip</h1>
+    <input type="text" id="urlInput" placeholder="Paste a long URL" style="width: 300px;">
+    <button onclick="shortenUrl()">Shorten</button>
+    <p id="result"></p>
+
+    <script>
+        async function shortenUrl() {
+            const url = document.getElementById("urlInput").value;
+            const response = await fetch("http://127.0.0.1:8000/shorten", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: url })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById("result").innerHTML =
+                    `Short URL: <a href="${data.short_url}">${data.short_url}</a>`;
+            } else {
+                document.getElementById("result").innerText = "Error: invalid URL";
+            }
+        }
+    </script>
+</body>
+</html>

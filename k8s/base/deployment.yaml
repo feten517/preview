@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snip-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snip
+  template:
+    metadata:
+      labels:
+        app: snip
+    spec:
+      containers:
+        - name: snip
+          image: snip
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
