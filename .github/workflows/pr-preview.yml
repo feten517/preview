@@ -18,4 +18,4 @@ jobs:
         run: kind load docker-image snip --name prview
 
       - name: Create preview environment
-        run: bash -c "chmod +x scripts/create-preview.sh && bash scripts/create-preview.sh ${{ github.event.pull_request.number }}"
+        run: bash -c "sed -i 's/\r$//' scripts/create-preview.sh && chmod +x scripts/create-preview.sh && bash scripts/create-preview.sh ${{ github.event.pull_request.number }}"
