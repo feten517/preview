@@ -7,9 +7,15 @@ on:
 jobs:
   deploy-preview:
     runs-on: self-hosted
+    env:
+      KUBECONFIG: C:\Users\user\.kube\config
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Use Git Bash instead of WSL bash
+        shell: powershell
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
 
       - name: Build Docker image
         run: docker build -t snip .
@@ -17,7 +23,15 @@ jobs:
       - name: Load image into kind cluster
         run: kind load docker-image snip --name prview
 
-      - name: Create preview environment
+      - name: Debug kubectl context
+        shell: bash
         run: |
-          chmod +x scripts/create-preview.sh
-          ./scripts/create-preview.sh ${{ github.event.pull_request.number }}
+          which bash
+          kubectl config current-context
+          kubectl get nodes
+
+      - name: Create preview environment
+        shell: bash
+        run: |
+          sed -i 's/\r$//' scripts/create-preview.sh
+          bash scripts/create-preview.sh ${{ github.event.pull_request.number }}
