@@ -7,6 +7,8 @@ on:
 jobs:
   deploy-preview:
     runs-on: self-hosted
+    permissions:
+      pull-requests: write
     env:
       KUBECONFIG: C:\Users\user\.kube\config
     steps:
@@ -23,15 +25,29 @@ jobs:
       - name: Load image into kind cluster
         run: kind load docker-image snip --name prview
 
-      - name: Debug kubectl context
-        shell: bash
-        run: |
-          which bash
-          kubectl config current-context
-          kubectl get nodes
-
       - name: Create preview environment
         shell: bash
         run: |
           sed -i 's/\r$//' scripts/create-preview.sh
           bash scripts/create-preview.sh ${{ github.event.pull_request.number }}
+
+      - name: Comment preview info on PR
+        if: github.event.action != 'synchronize'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request.number;
+            const body = [
+              `Preview environment ready in namespace pr-${pr}.`,
+              '',
+              'To open it on the machine running the cluster, run:',
+              `kubectl port-forward service/snip-service-pr-${pr} 8080:8000 -n pr-${pr}`,
+              '',
+              'Then visit http://127.0.0.1:8080'
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body
+            });
