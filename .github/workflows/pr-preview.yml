@@ -7,9 +7,17 @@ on:
 jobs:
   deploy-preview:
     runs-on: self-hosted
+    permissions:
+      pull-requests: write
+    env:
+      KUBECONFIG: C:\Users\user\.kube\config
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Use Git Bash instead of WSL bash
+        shell: powershell
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
 
       - name: Build Docker image
         run: docker build -t snip .
@@ -18,6 +26,57 @@ jobs:
         run: kind load docker-image snip --name prview
 
       - name: Create preview environment
+        shell: bash
         run: |
-          chmod +x scripts/create-preview.sh
-          ./scripts/create-preview.sh ${{ github.event.pull_request.number }}
+          sed -i 's/\r$//' scripts/create-preview.sh
+          bash scripts/create-preview.sh ${{ github.event.pull_request.number }}
+
+      - name: Comment preview info on PR
+        if: github.event.action != 'synchronize'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request.number;
+            const body = [
+              `Preview environment ready in namespace pr-${pr}.`,
+              '',
+              'To open it on the machine running the cluster, run:',
+              `kubectl port-forward service/snip-service-pr-${pr} 18080:8000 -n pr-${pr}`,
+              '',
+              'Then visit http://127.0.0.1:18080'
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body
+            });
+
+  test-preview:
+    needs: deploy-preview
+    runs-on: self-hosted
+    env:
+      KUBECONFIG: C:\Users\user\.kube\config
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for the preview to be ready
+        shell: powershell
+        run: |
+          $pr = ${{ github.event.pull_request.number }}
+          kubectl rollout status deployment/snip-deployment-pr-$pr -n pr-$pr --timeout=120s
+
+      - name: Run end-to-end tests against the preview
+        shell: powershell
+        run: |
+          $pr = ${{ github.event.pull_request.number }}
+          $pf = Start-Process kubectl -ArgumentList "port-forward","service/snip-service-pr-$pr","18080:8000","-n","pr-$pr" -PassThru -WindowStyle Hidden
+          $code = 1
+          try {
+            python tests/e2e_test.py http://127.0.0.1:18080
+            $code = $LASTEXITCODE
+          } finally {
+            Stop-Process -Id $pf.Id -Force -ErrorAction SilentlyContinue
+          }
+          exit $code

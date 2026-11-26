@@ -1,0 +1,26 @@
+name: PR Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  destroy-preview:
+    runs-on: self-hosted
+    env:
+      KUBECONFIG: C:\Users\user\.kube\config
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use Git Bash instead of WSL bash
+        shell: powershell
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
+
+      - name: Destroy preview environment
+        shell: bash
+        run: |
+          sed -i 's/\r$//' scripts/destroy-preview.sh
+          bash scripts/destroy-preview.sh ${{ github.event.pull_request.number }}
